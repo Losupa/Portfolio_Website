@@ -1,0 +1,31 @@
+version: "3"
+services:
+	# Builds the image from corresponding "frontend/Dockerfile"
+	# and exposes port 80 and 443 that NGINX will listen on to
+	# handle HTTP and HTTPS requests
+	# Mounts ssl folder as a volume so that the certificate credentials
+	# are accessible inside the container
+	frontend:
+		container_name: frontend
+		build:
+			context: ./frontend
+			dockerfile: Dockerfile
+		ports:
+			- 80:80
+			- 443:443
+		volumes:
+			- /home/ubuntu/ssl:/etc/nginx/certs
+	# Builds teh image from corresponding "backend/Dockerfile"
+	# and exposes port 5000 to make it accessible to the frontend service
+	backend:
+		restart: always
+		container_name: backend
+		build: ./backend
+		expose:
+			- 5000
+		volumes:
+			- ./backend:/usr/src/app
+		environment:
+			- FLASK_ENV=development
+			- FLASK_APP=app.py
+			- FLASK_DEBUG=1

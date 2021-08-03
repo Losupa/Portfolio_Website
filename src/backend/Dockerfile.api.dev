@@ -1,0 +1,44 @@
+# This Dockerfile sets up backend api for
+# a portfolio website (development)
+# BUILD: docker build -f Dockerfile.api.dev -t losupa-portfolio-api-dev .
+# RUN: docker run --rm -p 5000:5000 losupa-portfolio-api-dev
+
+# Installs python version 3.8.11 (alpine) from Docker
+FROM python:3.8-alpine
+
+# Makes app directory and sets it as working directory
+WORKDIR /usr/src/app
+
+# Set environment variables
+# Makes sure .pyc files are not written to disk,
+# which keeps environment cleaner
+ENV PYTHONDONTWRITEBYTECODE 1
+# Makes sure output from the server is not buffered
+# so log files and docker output is immediately output
+# in case of crashes and for debugging
+ENV PYTHONUNBUFFERED 1
+
+
+# Copies requirements.txt to app
+# and installs all required python packages
+# NOTE: this installs gunicorn
+COPY losupa_website_backend/api/requirements.txt ./
+# Updates pip then installs files
+# The no-cache-dir means you don't cache the package
+# NOTE: running the two pip commands together reduces the number
+# of layers in the docker compilation and prevents caching and
+# reduces use of disc space
+RUN pip install --upgrade pip; pip install -r requirements.txt
+
+# Copies flask environment file
+COPY losupa_website_backend/api/.flaskenv ./
+
+# Copies all api python files
+COPY losupa_website_backend/api/*.py ./
+
+# Exposes port
+EXPOSE 5000
+
+# Start up command for Gunicorn and Flask server
+# Sets port 5000 is to be used
+CMD ["gunicorn", "-b", ":5000", "api:app"]

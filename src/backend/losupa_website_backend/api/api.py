@@ -1,7 +1,11 @@
 import time
-from flask import Flask
+from flask import Flask, jsonify
 
-app = Flask(__name__, static_folder='../build', static_url_path='/')
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return jsonify(hello="world")
 
 @app.route('/api/time')
 def get_current_time():

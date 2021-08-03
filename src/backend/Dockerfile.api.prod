@@ -1,0 +1,57 @@
+# This Dockerfile sets up backend api for
+# a portfolio website (production)
+# BUILD: docker build -f Dockerfile.api.prod -t losupa-portfolio-api-prod .
+# RUN: docker run --rm -p 5000:5000 losupa-portfolio-api-prod
+
+# NOTE: takes advantage of multi-stage builds to create
+# a temp image used for building python packages,
+# which will then have only the necessary files copied over
+# to production image
+
+FROM python:3.8 as base
+
+WORKDIR /
+
+# Installs python packages from requirements.txt then saves the
+# compiled wheel files
+RUN pip install --upgrade pip
+COPY losupa_website_backend/api/requirements.txt ./
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /wheels -r -requirements.txt
+
+# Installs python version 3.8.11 (alpine) from Docker
+FROM python:3.8-alpine
+
+# Makes app directory and sets it as working directory
+WORKDIR /usr/src/app/
+
+RUN pip install --upgrade pip
+# Copies compiled wheel files from the previous stage of the build
+COPY --from=base /wheels ./wheels/
+COPY --from=base requirements.txt .
+RUN pip install --no-cache ./wheels/*
+
+# Set environment variables
+# Makes sure .pyc files are not written to disk,
+# which keeps environment cleaner
+ENV PYTHONDONTWRITEBYTECODE 1
+# Makes sure output from the server is not buffered
+# so log files and docker output is immediately output
+# in case of crashes and for debugging
+ENV PYTHONUNBUFFERED 1
+
+# Copies flask environment file
+COPY losupa_website_backend/api/.flaskenv ./
+
+# Copies all api python files
+COPY losupa_website_backend/api/*.py ./
+
+# Uncomment if you want to set this to production
+# and disable DEBUG mode
+ENV FLASK_ENV production
+
+# Exposes port
+EXPOSE 5000
+
+# Start up command for Gunicorn and Flask server
+# Sets port 5000 is to be used
+CMD ["gunicorn", "-b", ":5000", "api:app"]
